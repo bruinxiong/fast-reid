@@ -1,15 +1,7 @@
-_BASE_: "../Base-Strongerbaseline.yml"
-
-MODEL:
-  HEADS:
-    NUM_CLASSES: 702
+_BASE_: ../Base-SBS.yml
 
 DATASETS:
   NAMES: ("DukeMTMC",)
   TESTS: ("DukeMTMC",)
 
-TEST:
-  PRECISE_BN:
-    DATASET: 'DukeMTMC'
-
-OUTPUT_DIR: "logs/dukemtmc/sbs_R50"
+OUTPUT_DIR: logs/dukemtmc/sbs_R50

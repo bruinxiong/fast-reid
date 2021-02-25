@@ -7,10 +7,9 @@
 import json
 import os.path as osp
 
-# from utils.iotools import mkdir_if_missing, write_json, read_json
+from fastreid.data.datasets import DATASET_REGISTRY
 from fastreid.utils.file_io import PathManager
 from .bases import ImageDataset
-from fastreid.data.datasets import DATASET_REGISTRY
 
 
 @DATASET_REGISTRY.register()
@@ -30,9 +29,9 @@ class CUHK03(ImageDataset):
     """
     dataset_dir = 'cuhk03'
     dataset_url = None
+    dataset_name = "cuhk03"
 
-    def __init__(self, root='datasets', split_id=0, cuhk03_labeled=False, cuhk03_classic_split=False, **kwargs):
-        # self.root = osp.abspath(osp.expanduser(root))
+    def __init__(self, root='datasets', split_id=0, cuhk03_labeled=True, cuhk03_classic_split=False, **kwargs):
         self.root = root
         self.dataset_dir = osp.join(self.root, self.dataset_dir)
 
@@ -69,12 +68,18 @@ class CUHK03(ImageDataset):
 
         with PathManager.open(split_path) as f:
             splits = json.load(f)
-        # splits = read_json(split_path)
         assert split_id < len(splits), 'Condition split_id ({}) < len(splits) ({}) is false'.format(split_id,
                                                                                                     len(splits))
         split = splits[split_id]
 
         train = split['train']
+        tmp_train = []
+        for img_path, pid, camid in train:
+            new_pid = self.dataset_name + "_" + str(pid)
+            new_camid = self.dataset_name + "_" + str(camid)
+            tmp_train.append((img_path, new_pid, new_camid))
+        train = tmp_train
+        del tmp_train
         query = split['query']
         gallery = split['gallery']
 
@@ -95,7 +100,7 @@ class CUHK03(ImageDataset):
 
         import h5py
         from imageio import imwrite
-        from scipy.io import loadmat
+        from scipy import io
 
         PathManager.mkdirs(self.imgs_detected_dir)
         PathManager.mkdirs(self.imgs_labeled_dir)
@@ -231,7 +236,7 @@ class CUHK03(ImageDataset):
 
         print('Creating new split for detected images (767/700) ...')
         train_info, query_info, gallery_info = _extract_new_split(
-            loadmat(self.split_new_det_mat_path),
+            io.loadmat(self.split_new_det_mat_path),
             self.imgs_detected_dir
         )
         split = [{
@@ -245,11 +250,13 @@ class CUHK03(ImageDataset):
             'num_gallery_pids': gallery_info[1],
             'num_gallery_imgs': gallery_info[2]
         }]
-        write_json(split, self.split_new_det_json_path)
+
+        with PathManager.open(self.split_new_det_json_path, 'w') as f:
+            json.dump(split, f, indent=4, separators=(',', ': '))
 
         print('Creating new split for labeled images (767/700) ...')
         train_info, query_info, gallery_info = _extract_new_split(
-            loadmat(self.split_new_lab_mat_path),
+            io.loadmat(self.split_new_lab_mat_path),
             self.imgs_labeled_dir
         )
         split = [{
@@ -263,4 +270,5 @@ class CUHK03(ImageDataset):
             'num_gallery_pids': gallery_info[1],
             'num_gallery_imgs': gallery_info[2]
         }]
-        write_json(split, self.split_new_lab_json_path)
+        with PathManager.open(self.split_new_lab_json_path, 'w') as f:
+            json.dump(split, f, indent=4, separators=(',', ': '))

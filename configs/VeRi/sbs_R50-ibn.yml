@@ -1,4 +1,4 @@
-_BASE_: "../Base-Strongerbaseline.yml"
+_BASE_: ../Base-SBS.yml
 
 INPUT:
   SIZE_TRAIN: [256, 256]
@@ -7,31 +7,26 @@ INPUT:
 MODEL:
   BACKBONE:
     WITH_IBN: True
-    PRETRAIN_PATH: "/export2/home/zjk/pretrain_models/resnet50_ibn_a.pth.tar"
-
-  HEADS:
-    NUM_CLASSES: 575
 
 SOLVER:
-  OPT: "SGD"
+  OPT: SGD
   BASE_LR: 0.01
   ETA_MIN_LR: 7.7e-5
 
   IMS_PER_BATCH: 64
-  MAX_ITER: 35400
-  DELAY_ITERS: 17700
-  WARMUP_ITERS: 2950
-  FREEZE_ITERS: 2950
+  MAX_EPOCH: 60
+  DELAY_EPOCHS: 30
+  WARMUP_ITERS: 2000
+  FREEZE_ITERS: 1000
 
-  LOG_PERIOD: 590
-  CHECKPOINT_PERIOD: 11800
+  CHECKPOINT_PERIOD: 20
 
 DATASETS:
   NAMES: ("VeRi",)
   TESTS: ("VeRi",)
 
 TEST:
-  EVAL_PERIOD: 3540
+  EVAL_PERIOD: 20
   IMS_PER_BATCH: 128
 
-OUTPUT_DIR: "logs/veri/sbs_R50-ibn"
+OUTPUT_DIR: logs/veri/sbs_R50-ibn

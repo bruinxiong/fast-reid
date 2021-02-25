@@ -1,7 +1,7 @@
 # encoding: utf-8
 """
 @author:  xingyu liao
-@contact: liaoxingyu5@jd.com
+@contact: sherlockliao01@gmail.com
 """
 
 import caffe
@@ -43,7 +43,7 @@ def get_parser():
     parser.add_argument(
         "--height",
         type=int,
-        default=384,
+        default=256,
         help="height of image"
     )
     parser.add_argument(
@@ -88,8 +88,8 @@ if __name__ == "__main__":
             assert args.input, "The input path(s) was not found"
         for path in tqdm.tqdm(args.input):
             image = preprocess(path, args.height, args.width)
-            net.blobs['blob1'].data[...] = image
-            feat = net.forward()['output']
+            net.blobs["blob1"].data[...] = image
+            feat = net.forward()["output"]
             feat = normalize(feat[..., 0, 0], axis=1)
             np.save(os.path.join(args.output, path.replace('.jpg', '.npy').split('/')[-1]), feat)
 

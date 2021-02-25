@@ -1,8 +1,9 @@
 # credits: https://github.com/KaiyangZhou/deep-person-reid/blob/master/torchreid/metrics/rank.py
 
-import numpy as np
 import warnings
 from collections import defaultdict
+
+import numpy as np
 
 try:
     from .rank_cylib.rank_cy import evaluate_cy
@@ -11,7 +12,7 @@ try:
 except ImportError:
     IS_CYTHON_AVAI = False
     warnings.warn(
-        'Cython evaluation (very fast so highly recommended) is '
+        'Cython rank evaluation (very fast so highly recommended) is '
         'unavailable, now use python evaluation.'
     )
 
@@ -22,7 +23,10 @@ def eval_cuhk03(distmat, q_pids, g_pids, q_camids, g_camids, max_rank):
     Random sampling is performed num_repeats times.
     """
     num_repeats = 10
+
     num_q, num_g = distmat.shape
+
+    indices = np.argsort(distmat, axis=1)
 
     if num_g < max_rank:
         max_rank = num_g
@@ -31,7 +35,6 @@ def eval_cuhk03(distmat, q_pids, g_pids, q_camids, g_camids, max_rank):
                 format(num_g)
         )
 
-    indices = np.argsort(distmat, axis=1)
     matches = (g_pids[indices] == q_pids[:, np.newaxis]).astype(np.int32)
 
     # compute cmc curve for each query
@@ -154,23 +157,15 @@ def eval_market1501(distmat, q_pids, g_pids, q_camids, g_camids, max_rank):
 
     all_cmc = np.asarray(all_cmc).astype(np.float32)
     all_cmc = all_cmc.sum(0) / num_valid_q
-    mAP = np.mean(all_AP)
-    mINP = np.mean(all_INP)
 
-    return all_cmc, mAP, mINP
+    return all_cmc, all_AP, all_INP
 
 
-def evaluate_py(
-        distmat, q_pids, g_pids, q_camids, g_camids, max_rank, use_metric_cuhk03
-):
+def evaluate_py(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, use_metric_cuhk03):
     if use_metric_cuhk03:
-        return eval_cuhk03(
-            distmat, q_pids, g_pids, q_camids, g_camids, max_rank
-        )
+        return eval_cuhk03(distmat, g_pids, q_camids, g_camids, max_rank)
     else:
-        return eval_market1501(
-            distmat, q_pids, g_pids, q_camids, g_camids, max_rank
-        )
+        return eval_market1501(distmat, q_pids, g_pids, q_camids, g_camids, max_rank)
 
 
 def evaluate_rank(
@@ -202,12 +197,6 @@ def evaluate_rank(
             by more than 10x. This requires Cython to be installed.
     """
     if use_cython and IS_CYTHON_AVAI:
-        return evaluate_cy(
-            distmat, q_pids, g_pids, q_camids, g_camids, max_rank,
-            use_metric_cuhk03
-        )
+        return evaluate_cy(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, use_metric_cuhk03)
     else:
-        return evaluate_py(
-            distmat, q_pids, g_pids, q_camids, g_camids, max_rank,
-            use_metric_cuhk03
-        )
+        return evaluate_py(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, use_metric_cuhk03)

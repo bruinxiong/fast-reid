@@ -1,13 +1,15 @@
 # encoding: utf-8
 """
 @author:  xingyu liao
-@contact: liaoxingyu5@jd.com
+@contact: sherlockliao01@gmail.com
 """
 
 import argparse
+import logging
+import sys
 
 import torch
-import sys
+
 sys.path.append('../../')
 
 import pytorch_to_caffe
@@ -15,6 +17,10 @@ from fastreid.config import get_cfg
 from fastreid.modeling.meta_arch import build_model
 from fastreid.utils.file_io import PathManager
 from fastreid.utils.checkpoint import Checkpointer
+from fastreid.utils.logger import setup_logger
+
+setup_logger(name='fastreid')
+logger = logging.getLogger("fastreid.caffe_export")
 
 
 def setup_cfg(args):
@@ -63,12 +69,13 @@ if __name__ == '__main__':
 
     model = build_model(cfg)
     Checkpointer(model).load(cfg.MODEL.WEIGHTS)
-    model.cuda()
     model.eval()
-    print(model)
+    logger.info(model)
 
-    inputs = torch.randn(1, 3, cfg.INPUT.SIZE_TEST[0], cfg.INPUT.SIZE_TEST[1]).cuda()
+    inputs = torch.randn(1, 3, cfg.INPUT.SIZE_TEST[0], cfg.INPUT.SIZE_TEST[1]).to(torch.device(cfg.MODEL.DEVICE))
     PathManager.mkdirs(args.output)
     pytorch_to_caffe.trans_net(model, inputs, args.name)
     pytorch_to_caffe.save_prototxt(f"{args.output}/{args.name}.prototxt")
     pytorch_to_caffe.save_caffemodel(f"{args.output}/{args.name}.caffemodel")
+
+    logger.info(f"Export caffe model in {args.output} sucessfully!")

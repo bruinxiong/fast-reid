@@ -1,19 +1,18 @@
+#!/usr/bin/env python
 # encoding: utf-8
 """
 @author:  sherlock
 @contact: sherlockliao01@gmail.com
 """
 
-import os
 import logging
+import os
 import sys
 
 sys.path.append('.')
 
-from torch import nn
-
 from fastreid.config import get_cfg
-from fastreid.engine import DefaultTrainer, default_argument_parser, default_setup
+from fastreid.engine import DefaultTrainer, default_argument_parser, default_setup, launch
 from fastreid.utils.checkpoint import Checkpointer
 from fastreid.engine import hooks
 
@@ -22,10 +21,9 @@ from partialreid import *
 
 class Trainer(DefaultTrainer):
     @classmethod
-    def build_evaluator(cls, cfg, num_query, output_folder=None):
-        if output_folder is None:
-            output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
-        return DsrEvaluator(cfg, num_query)
+    def build_evaluator(cls, cfg, dataset_name, output_dir=None):
+        data_loader, num_query = cls.build_test_loader(cfg, dataset_name)
+        return data_loader, DsrEvaluator(cfg, num_query, output_dir)
 
 
 def setup(args):
@@ -44,15 +42,14 @@ def setup(args):
 def main(args):
     cfg = setup(args)
 
-    logger = logging.getLogger('fastreid.' + __name__)
     if args.eval_only:
+        logger = logging.getLogger("fastreid.trainer")
         cfg.defrost()
         cfg.MODEL.BACKBONE.PRETRAIN = False
         model = Trainer.build_model(cfg)
-        model = nn.DataParallel(model)
-        model = model.cuda()
 
-        Checkpointer(model, save_dir=cfg.OUTPUT_DIR).load(cfg.MODEL.WEIGHTS)  # load trained model
+        Checkpointer(model).load(cfg.MODEL.WEIGHTS)  # load trained model
+
         if cfg.TEST.PRECISE_BN.ENABLED and hooks.get_bn_modules(model):
             prebn_cfg = cfg.clone()
             prebn_cfg.DATALOADER.NUM_WORKERS = 0  # save some memory and time for PreciseBN
@@ -76,4 +73,11 @@ def main(args):
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
     print("Command Line Args:", args)
-    main(args)
+    launch(
+        main,
+        args.num_gpus,
+        num_machines=args.num_machines,
+        machine_rank=args.machine_rank,
+        dist_url=args.dist_url,
+        args=(args,),
+    )
